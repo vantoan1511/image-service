@@ -1,19 +1,16 @@
 package com.shopbee.imageservice.image;
 
 import com.shopbee.imageservice.AuthenticationService;
+import com.shopbee.imageservice.page.PageRequest;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
-import java.net.URI;
-import java.util.List;
-
-@Path("api/images")
+@Path("images")
 public class ImageResource {
 
     SecurityIdentity securityIdentity;
@@ -31,56 +28,45 @@ public class ImageResource {
     }
 
     @GET
-    @Path("{id}")
+    @Produces(MediaType.APPLICATION_JSON)
     @Authenticated
-    public Image getById(@PathParam("id") Long id) {
-        return imageService.getById(id);
-    }
-
-    @GET
-    @Path("avatar")
-    @Produces({"image/jpeg"})
-    public byte[] getAvatarByUserId(@QueryParam("userId") Long userId) {
-        Image avatar = imageService.getAvatarByUserId(userId);
-        return avatar.getContent();
-    }
-
-//    @GET
-//    @Path("avatar/{username}")
-//    @Produces({"image/jpeg"})
-//    public byte[] getAvatar(@PathParam("username") String username) {
-//        return imageService.getAvatar(username);
-//    }
-
-    @GET
-    @Authenticated
-    public List<Image> getUploaded() {
-        return imageService.getUploadedWithFilter();
+    public Response getUploaded(PageRequest pageRequest) {
+        return Response.ok(imageService.getUploaded(pageRequest)).build();
     }
 
     @POST
+    @Path("upload")
     @Authenticated
-    public Response upload(
-            @RestForm("altText") String altText,
-            @RestForm("image") FileUpload imageFile,
-            @Context UriInfo uriInfo) {
-        Image image = imageService.upload(altText, imageFile);
-        URI uri = uriInfo.getAbsolutePathBuilder().build(image.getId());
-        return Response.created(uri).entity(image).build();
+    public Response upload(@RestForm("altText") String altText,
+                           @RestForm("image") FileUpload fileUpload) {
+        return Response.ok(imageService.upload(altText, fileUpload)).build();
     }
 
-    @PUT
+    @GET
     @Path("{id}")
+    @Produces({"images/jpeg"})
+    public Response getById(@PathParam("id") Long id) {
+        Image image = imageService.getById(id);
+        return Response.ok(image.getContent())
+                .header("Content-Disposition", "attachment; filename=\"" + image.getAltText() + "\"")
+                .build();
+    }
+
+    @DELETE
+    @Path("{id}")
+    @Authenticated
+    public Response delete(@PathParam("id") Long id) {
+        imageService.delete(id);
+        return Response.noContent().build();
+    }
+
+    @PATCH
+    @Path("{id}/set-avatar")
     @Authenticated
     public Response setAvatar(@PathParam("id") Long id) {
         imageService.setAvatar(id);
         return Response.ok().build();
     }
 
-    @DELETE
-    @Authenticated
-    public Response delete(List<Long> ids) {
-        imageService.delete(ids);
-        return Response.noContent().build();
-    }
+
 }

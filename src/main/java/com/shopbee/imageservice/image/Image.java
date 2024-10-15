@@ -15,11 +15,11 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "image")
+@Table(name = "is_image")
 public class Image {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "alt_text", nullable = false)
@@ -27,7 +27,7 @@ public class Image {
 
     @Lob
     @Basic
-    @Column(name = "content", nullable = false)
+    @Column(name = "content", nullable = false, columnDefinition = "BLOB")
     private byte[] content;
 
     @Column(name = "is_avatar")
@@ -43,8 +43,5 @@ public class Image {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
-
-    @Column(name = "product_id")
-    private Long productId;
 
 }

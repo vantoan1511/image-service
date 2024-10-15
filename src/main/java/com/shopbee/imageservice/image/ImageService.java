@@ -1,14 +1,16 @@
 package com.shopbee.imageservice.image;
 
 import com.shopbee.imageservice.AuthenticationService;
+import com.shopbee.imageservice.page.PageRequest;
+import com.shopbee.imageservice.page.PagedResponse;
 import com.shopbee.imageservice.user.User;
 import com.shopbee.imageservice.user.UserResource;
 import com.shopbee.imageservice.user.UserService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -41,20 +43,11 @@ public class ImageService {
         this.authenticationService = authenticationService;
     }
 
-    public void delete(List<Long> ids) {
-        ids.forEach(this::delete);
-    }
-
-    public void delete(Long id) {
-        User user = authenticationService.getPrincipal();
-        Image image = getMetadataByIdAndUserId(id, user.getId());
-        imageRepository.delete(image);
-    }
-
-    public void setAvatar(Long id) {
-        removeCurrentAvatars();
-        Image image = getMetadataById(id);
-        image.setAvatar(true);
+    public PagedResponse<Image> getUploaded(@Valid PageRequest pageRequest) {
+        Long userId = authenticationService.getPrincipal().getId();
+        List<Image> images = imageRepository.find(userId, pageRequest);
+        long totalImages = imageRepository.count(userId);
+        return PagedResponse.of((int) totalImages, pageRequest, images);
     }
 
     public Image upload(String altText, FileUpload imageFile) {
@@ -66,12 +59,14 @@ public class ImageService {
 
             validateUploadedImage(imageFile);
 
-            if (StringUtils.isBlank(altText)) {
-                altText = imageFile.name();
+            Image image = new Image();
+
+            if (altText == null) {
+                image.setAltText(imageFile.name());
+            } else {
+                image.setAltText(altText);
             }
 
-            Image image = new Image();
-            image.setAltText(altText);
             image.setContent(Files.readAllBytes(imageFile.uploadedFile()));
             image.setUserId(user.getId());
             imageRepository.persist(image);
@@ -81,36 +76,25 @@ public class ImageService {
         }
     }
 
-    public List<Image> getUploadedWithFilter() {
+    public void delete(Long id) {
         User user = authenticationService.getPrincipal();
-        return imageRepository.find("userId", user.getId()).list();
+        Image image = getById(id);
+
+        if (!user.getId().equals(image.getUserId())) {
+            throw new ImageException("Not permitted", Response.Status.FORBIDDEN);
+        }
+
+        imageRepository.delete(image);
     }
 
-//    public byte[] getAvatar(String username) {
-//        User user = userService.getByUsername(username);
-//        return getAvatarByUserId(user.getId()).getContent();
-//    }
-
-    public Image getAvatarByUserId(Long userId) {
-        return imageRepository.find("userId = ?1 AND avatar = ?2", userId, true)
-                .firstResultOptional()
-                .orElseThrow(() -> new ImageException("Avatar not found", Response.Status.NOT_FOUND));
+    public void setAvatar(Long id) {
+        removeCurrentAvatars();
+        Image image = getById(id);
+        image.setAvatar(true);
     }
 
     public Image getById(Long id) {
-        User user = authenticationService.getPrincipal();
-
-        return getMetadataByIdAndUserId(id, user.getId());
-    }
-
-    public Image getMetadataById(Long id) {
         return imageRepository.findByIdOptional(id)
-                .orElseThrow(() -> new ImageException("Image not found", Response.Status.NOT_FOUND));
-    }
-
-    public Image getMetadataByIdAndUserId(Long id, Long userId) {
-        return imageRepository.find("id = ?1 AND userId = ?2", id, userId)
-                .firstResultOptional()
                 .orElseThrow(() -> new ImageException("Image not found", Response.Status.NOT_FOUND));
     }
 
@@ -120,9 +104,13 @@ public class ImageService {
     }
 
     private void validateUploadedImage(FileUpload imageFile) {
+        if (imageFile == null) {
+            throw new ImageException("File empty", Response.Status.BAD_REQUEST);
+        }
+
         String mimeType = imageFile.contentType();
         if (mimeType == null || !mimeType.startsWith("image/")) {
-            throw new ImageException("Uploaded file is not image", Response.Status.BAD_REQUEST);
+            throw new ImageException("File type not supported", Response.Status.BAD_REQUEST);
         }
 
         if (imageFile.size() > MAX_FILE_SIZE) {
