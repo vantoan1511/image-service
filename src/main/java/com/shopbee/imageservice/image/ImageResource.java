@@ -34,6 +34,16 @@ public class ImageResource {
         return Response.ok(imageService.getUploaded(pageRequest)).build();
     }
 
+    @GET
+    @Path("avatar/users/{userId}")
+    @Produces({"images/jpeg"})
+    public Response getAvatar(@PathParam("userId") Long userId) {
+        Image image = imageService.getAvatarByUserId(userId);
+        return Response.ok(image.getContent())
+                .header("Content-Disposition", "attachment; filename=\"" + image.getAltText() + "\"")
+                .build();
+    }
+
     @POST
     @Path("upload")
     @Authenticated

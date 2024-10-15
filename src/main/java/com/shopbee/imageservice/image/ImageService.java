@@ -50,6 +50,11 @@ public class ImageService {
         return PagedResponse.of((int) totalImages, pageRequest, images);
     }
 
+    public Image getAvatarByUserId(Long userId) {
+        return imageRepository.findAvatarByUserId(userId)
+                .orElseThrow(() -> new ImageException("Image not found", Response.Status.NOT_FOUND));
+    }
+
     public Image upload(String altText, FileUpload imageFile) {
         try {
             User user = authenticationService.getPrincipal();
