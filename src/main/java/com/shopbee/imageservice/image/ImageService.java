@@ -26,21 +26,21 @@ public class ImageService {
 
     private static final long MAX_FILE_SIZE = 1024 * 1024;
 
-    ImageRepository imageRepository;
-
-    UserService userService;
-
-    AuthenticationService authenticationService;
-
     @RestClient
     UserResource userResource;
+    ImageRepository imageRepository;
+    UserService userService;
+    AuthenticationService authenticationService;
+    ImageResizingService imageResizingService;
 
     public ImageService(ImageRepository imageRepository,
                         UserService userService,
-                        AuthenticationService authenticationService) {
+                        AuthenticationService authenticationService,
+                        ImageResizingService imageResizingService) {
         this.imageRepository = imageRepository;
         this.userService = userService;
         this.authenticationService = authenticationService;
+        this.imageResizingService = imageResizingService;
     }
 
     public PagedResponse<Image> getUploaded(@Valid PageRequest pageRequest) {
@@ -72,7 +72,9 @@ public class ImageService {
                 image.setAltText(altText);
             }
 
-            image.setContent(Files.readAllBytes(imageFile.uploadedFile()));
+            byte[] originalImageContent = Files.readAllBytes(imageFile.uploadedFile());
+            byte[] compressedImageContent = imageResizingService.compress(originalImageContent);
+            image.setContent(compressedImageContent);
             image.setUserId(user.getId());
             imageRepository.persist(image);
             return image;

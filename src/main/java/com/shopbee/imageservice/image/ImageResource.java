@@ -10,21 +10,24 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.util.Objects;
+
 @Path("images")
 public class ImageResource {
 
     SecurityIdentity securityIdentity;
-
     ImageService imageService;
-
     AuthenticationService authenticationService;
+    ImageResizingService imageResizingService;
 
     public ImageResource(SecurityIdentity securityIdentity,
                          ImageService imageService,
-                         AuthenticationService authenticationService) {
+                         AuthenticationService authenticationService,
+                         ImageResizingService imageResizingService) {
         this.securityIdentity = securityIdentity;
         this.imageService = imageService;
         this.authenticationService = authenticationService;
+        this.imageResizingService = imageResizingService;
     }
 
     @GET
@@ -37,7 +40,8 @@ public class ImageResource {
     @GET
     @Path("avatar/users/{userId}")
     @Produces({"images/jpeg"})
-    public Response getAvatar(@PathParam("userId") Long userId) {
+    public Response getAvatar(@PathParam("userId") Long userId,
+                              @QueryParam("size") String size) {
         Image image = imageService.getAvatarByUserId(userId);
         return Response.ok(image.getContent())
                 .header("Content-Disposition", "attachment; filename=\"" + image.getAltText() + "\"")
@@ -55,9 +59,25 @@ public class ImageResource {
     @GET
     @Path("{id}")
     @Produces({"images/jpeg"})
-    public Response getById(@PathParam("id") Long id) {
+    public Response getById(@PathParam("id") Long id,
+                            @HeaderParam("If-None-Match") String ifNoneMatch,
+                            @QueryParam("size") String size) {
         Image image = imageService.getById(id);
+
+        if (Objects.nonNull(size)) {
+            ImageSize imageSize = ImageSize.valueOf(size);
+            byte[] imageContent = image.getContent();
+            image.setContent(imageResizingService.resize(imageContent, imageSize.getWidth(), imageSize.getHeight()));
+        }
+
+        String etag = generateETag(image);
+        if (etag.equals(ifNoneMatch)) {
+            return Response.notModified().build();
+        }
+
         return Response.ok(image.getContent())
+                .tag(etag)
+                .header("Cache-Control", "public, max-age=86400")
                 .header("Content-Disposition", "attachment; filename=\"" + image.getAltText() + "\"")
                 .build();
     }
@@ -78,5 +98,7 @@ public class ImageResource {
         return Response.ok().build();
     }
 
-
+    private String generateETag(Image image) {
+        return image.getId() + "-" + image.getModifiedAt().getTime();
+    }
 }

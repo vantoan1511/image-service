@@ -1,5 +1,6 @@
 package com.shopbee.imageservice.user;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
@@ -7,6 +8,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.HttpHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
+@ApplicationScoped
 @Path("customers")
 @RegisterRestClient(configKey = "customer-api")
 public interface UserResource {
