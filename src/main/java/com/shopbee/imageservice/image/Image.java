@@ -1,5 +1,6 @@
 package com.shopbee.imageservice.image;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class Image {
     @Lob
     @Basic
     @Column(name = "content", nullable = false, columnDefinition = "BLOB")
+    @JsonIgnore
     private byte[] content;
 
     @Column(name = "is_avatar")

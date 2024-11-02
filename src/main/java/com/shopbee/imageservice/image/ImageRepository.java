@@ -10,8 +10,8 @@ import java.util.Optional;
 @ApplicationScoped
 public class ImageRepository implements PanacheRepository<Image> {
 
-    public Optional<Image> findAvatarByUserId(Long userId) {
-        return find("avatar = ?1 AND userId = ?2", true, userId).firstResultOptional();
+    public List<Image> findAvatarByUserId(Long userId) {
+        return find("avatar = ?1 AND userId = ?2", true, userId).list();
     }
 
     public List<Image> find(Long userId, PageRequest pageRequest) {

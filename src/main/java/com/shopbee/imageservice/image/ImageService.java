@@ -51,7 +51,7 @@ public class ImageService {
     }
 
     public Image getAvatarByUserId(Long userId) {
-        return imageRepository.findAvatarByUserId(userId)
+        return imageRepository.findAvatarByUserId(userId).stream().findFirst()
                 .orElseThrow(() -> new ImageException("Image not found", Response.Status.NOT_FOUND));
     }
 
@@ -106,7 +106,8 @@ public class ImageService {
     }
 
     private void removeCurrentAvatars() {
-        List<Image> avatars = imageRepository.find("avatar", true).list();
+        Long userId = authenticationService.getPrincipal().getId();
+        List<Image> avatars = imageRepository.findAvatarByUserId(userId);
         avatars.forEach(avatar -> avatar.setAvatar(false));
     }
 
